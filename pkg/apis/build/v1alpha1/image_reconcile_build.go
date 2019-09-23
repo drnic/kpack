@@ -29,7 +29,7 @@ func (im *Image) ReconcileBuild(latestBuild *Build, resolver *SourceResolver, bu
 		nextBuildNumber := currentBuildNumber + 1
 		return newBuild{
 			previousBuild: latestBuild,
-			build:         im.rebase(builder.RunImage(), latestBuild.Status.RunImage, nextBuildNumber),
+			build:         im.rebase(builder, latestBuild.Status.RunImage, nextBuildNumber),
 			buildCounter:  nextBuildNumber,
 			latestImage:   latestImage,
 		}, nil

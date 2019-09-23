@@ -78,6 +78,7 @@ func testImageBuilds(t *testing.T, when spec.G, it spec.S) {
 				{ID: "buildpack.matches", Version: "1"},
 			},
 			LatestImage: "some/builder@sha256:builder-digest",
+			RunImage:    "some.registry.io/run-image@sha256:abcdefg1234",
 		},
 	}
 
@@ -101,6 +102,7 @@ func testImageBuilds(t *testing.T, when spec.G, it spec.S) {
 			},
 		},
 		Status: BuildStatus{
+			RunImage: "some.registry.io/run-image@sha256:abcdefg1234",
 			BuildMetadata: []BuildpackMetadata{
 				{ID: "buildpack.matches", Version: "1"},
 			},
@@ -564,10 +566,23 @@ func testImageBuilds(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("creates a rebase build", func() {
-			build := image.rebase(build.Status.RunImage, builder.Status.RunImage, 1)
+			builder.Status.RunImage = "some.registry.io/run-image@sha256:newrunimage"
+			build := image.rebase(builder, "some.registry.io/run-image@sha256:abcdefg1234", 1)
 
-			require.Equal(t, build.Spec.Rebase.PreviousRunImage, build.Status.RunImage)
-			require.Equal(t, build.Spec.Rebase.LatestRunImage, builder.Status.RunImage)
+			prevRunImageConfig := RunImageConfig{
+				Ref:              "some.registry.io/run-image@sha256:abcdefg1234",
+				BuilderNamespace: "",
+				PullSecretName:   "",
+			}
+			require.Equal(t, prevRunImageConfig, build.Spec.Rebase.PreviousRunImage)
+
+			latestRunImageConfig := RunImageConfig{
+				Ref:              "some.registry.io/run-image@sha256:newrunimage",
+				BuilderNamespace: "",
+				PullSecretName:   "",
+			}
+			require.Equal(t, latestRunImageConfig, build.Spec.Rebase.LatestRunImage)
+
 			assert.Equal(t, "STACK", build.Annotations[BuildReasonAnnotation])
 		})
 	})

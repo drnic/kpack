@@ -89,11 +89,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	}
 
 	if build.Spec.Rebase != nil {
-		rebasedImage, err := c.ImageRebaser.Rebase(
-			build,
-			registry.NewNoAuthImageRef(build.Spec.Rebase.PreviousRunImage),
-			registry.NewNoAuthImageRef(build.Spec.Rebase.LatestRunImage),
-		)
+		rebasedImage, err := c.ImageRebaser.Rebase(build, build.Spec.Rebase.PreviousRunImage, build.Spec.Rebase.LatestRunImage)
 		if err != nil {
 			return err
 		}
@@ -110,7 +106,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 		build.Status.BuildMetadata = buildMetadataFromBuiltImage(image)
 		build.Status.LatestImage = identifier
-		build.Status.RunImage = build.Spec.Rebase.LatestRunImage
+		build.Status.RunImage = image.RunImage
 	} else {
 		pod, err := c.reconcileBuildPod(build)
 		if err != nil {

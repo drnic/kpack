@@ -132,7 +132,7 @@ func (im *Image) build(sourceResolver *SourceResolver, builder AbstractBuilder, 
 	}
 }
 
-func (im *Image) rebase(latestRunImage, previousRunImage string, nextBuildNumber int64) *Build {
+func (im *Image) rebase(builder AbstractBuilder, previousRunImage string, nextBuildNumber int64) *Build {
 	buildNumber := strconv.Itoa(int(nextBuildNumber))
 	return &Build{
 		ObjectMeta: metav1.ObjectMeta{
@@ -153,11 +153,49 @@ func (im *Image) rebase(latestRunImage, previousRunImage string, nextBuildNumber
 			Tags:           im.generateTags(buildNumber),
 			ServiceAccount: im.Spec.ServiceAccount,
 			Rebase: &RebaseConfig{
-				PreviousRunImage: previousRunImage,
-				LatestRunImage:   latestRunImage,
+				PreviousRunImage: runImageConfig(builder, previousRunImage),
+				LatestRunImage:   runImageConfig(builder, builder.RunImage()),
 			},
 		},
 	}
+}
+
+func runImageConfig(builder AbstractBuilder, ref string) RunImageConfig {
+	secret := ""
+	if len(builder.ImageRef().ImagePullSecrets) > 0 {
+		secret = builder.ImageRef().ImagePullSecrets[0].Name
+	}
+	return RunImageConfig{
+		Ref:              ref,
+		BuilderNamespace: builder.GetObjectMeta().GetNamespace(),
+		PullSecretName:   secret,
+	}
+}
+
+type RunImageConfig struct {
+	Ref              string `json:"ref"`
+	BuilderNamespace string `json:"namespace"`
+	PullSecretName   string `json:"secretName"`
+}
+
+func (r RunImageConfig) ServiceAccount() string {
+	return ""
+}
+
+func (r RunImageConfig) Namespace() string {
+	return r.BuilderNamespace
+}
+
+func (r RunImageConfig) Image() string {
+	return r.Ref
+}
+
+func (r RunImageConfig) HasSecret() bool {
+	return r.PullSecretName != ""
+}
+
+func (r RunImageConfig) SecretName() string {
+	return r.PullSecretName
 }
 
 func (im *Image) latestForImage(build *Build) string {
