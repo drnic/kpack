@@ -4,9 +4,6 @@ import (
 	"time"
 
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/google/go-containerregistry/pkg/v1/mutate"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
 type ImageFactory struct {
@@ -16,40 +13,6 @@ type ImageFactory struct {
 func (f *ImageFactory) NewRemote(imageRef ImageRef) (RemoteImage, error) {
 	remoteImage, err := NewGoContainerRegistryImage(imageRef.Image(), f.KeychainFactory.KeychainForImageRef(imageRef))
 	return remoteImage, err
-}
-
-func (f *ImageFactory) Rebase(orig, oldBase, latestBase ImageRef) (RemoteImage, error) {
-	origImage, err := NewGoContainerRegistryImage(orig.Image(), f.KeychainFactory.KeychainForImageRef(orig))
-	if err != nil {
-		return nil, err
-	}
-
-	oldBaseImage, err := NewGoContainerRegistryImage(oldBase.Image(), f.KeychainFactory.KeychainForImageRef(oldBase))
-	if err != nil {
-		return nil, err
-	}
-
-	latestBaseImage, err := NewGoContainerRegistryImage(latestBase.Image(), f.KeychainFactory.KeychainForImageRef(latestBase))
-	if err != nil {
-		return nil, err
-	}
-
-	rebase, err := mutate.Rebase(origImage.image, oldBaseImage.image, latestBaseImage.image)
-	if err != nil {
-		return nil, err
-	}
-
-	reference, err := name.ParseReference(origImage.repoName, name.WeakValidation)
-	if err != nil {
-		return nil, err
-	}
-
-	rebasedImage := &GoContainerRegistryImage{
-		repoName: origImage.repoName,
-		image:    rebase,
-	}
-
-	return rebasedImage, remote.Write(reference, rebase, remote.WithAuthFromKeychain(f.KeychainFactory.KeychainForImageRef(orig)))
 }
 
 type KeychainFactory interface {

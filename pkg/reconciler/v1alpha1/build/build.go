@@ -37,7 +37,7 @@ type PodGenerator interface {
 	Generate(*v1alpha1.Build) (*corev1.Pod, error)
 }
 
-func NewController(opt reconciler.Options, k8sClient k8sclient.Interface, informer v1alpha1informer.BuildInformer, podInformer corev1Informers.PodInformer, metadataRetriever MetadataRetriever, podGenerator PodGenerator, imageFactory registry.ImageFactory) *controller.Impl {
+func NewController(opt reconciler.Options, k8sClient k8sclient.Interface, informer v1alpha1informer.BuildInformer, podInformer corev1Informers.PodInformer, metadataRetriever MetadataRetriever, podGenerator PodGenerator, imageRebaser registry.ImageRebaser) *controller.Impl {
 	c := &Reconciler{
 		Client:            opt.Client,
 		K8sClient:         k8sClient,
@@ -45,7 +45,7 @@ func NewController(opt reconciler.Options, k8sClient k8sclient.Interface, inform
 		Lister:            informer.Lister(),
 		PodLister:         podInformer.Lister(),
 		PodGenerator:      podGenerator,
-		ImageFactory:      imageFactory,
+		ImageRebaser:      imageRebaser,
 	}
 
 	impl := controller.NewImpl(c, opt.Logger, ReconcilerName)
@@ -67,7 +67,7 @@ type Reconciler struct {
 	K8sClient         k8sclient.Interface
 	PodLister         v1Listers.PodLister
 	PodGenerator      PodGenerator
-	ImageFactory      registry.ImageFactory
+	ImageRebaser      registry.ImageRebaser
 }
 
 func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
@@ -89,7 +89,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	}
 
 	if build.Spec.Rebase != nil {
-		rebasedImage, err := c.ImageFactory.Rebase(
+		rebasedImage, err := c.ImageRebaser.Rebase(
 			build,
 			registry.NewNoAuthImageRef(build.Spec.Rebase.PreviousRunImage),
 			registry.NewNoAuthImageRef(build.Spec.Rebase.LatestRunImage),
