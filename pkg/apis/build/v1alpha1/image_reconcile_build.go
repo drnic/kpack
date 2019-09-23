@@ -25,8 +25,14 @@ func (im *Image) ReconcileBuild(latestBuild *Build, resolver *SourceResolver, bu
 		}, nil
 	}
 
-	if reasons, needed := im.rebaseNeeded(latestBuild, builder); needed {
-		//We want to do something here that is in process rebasing of the image, but what happens in case of artifactory?
+	if im.rebaseNeeded(latestBuild, builder) {
+		nextBuildNumber := currentBuildNumber + 1
+		return newBuild{
+			previousBuild: latestBuild,
+			build:         im.rebase(builder.RunImage(), latestBuild.Status.RunImage, nextBuildNumber),
+			buildCounter:  nextBuildNumber,
+			latestImage:   latestImage,
+		}, nil
 	}
 
 	return upToDateBuild{

@@ -66,21 +66,31 @@ func (im *Image) buildNeeded(lastBuild *Build, sourceResolver *SourceResolver, b
 		reasons = append(reasons, BuildReasonBuildpack)
 	}
 
-	//do we check for rebase even for rebuilds to add that as a reason?
+	if lastBuild.Status.RunImage != builder.RunImage() && len(reasons) > 0 {
+		reasons = append(reasons, BuildReasonStack)
+	}
 
 	return reasons, len(reasons) > 0
 }
 
-func (im *Image) rebaseNeeded(lastBuild *Build, builder AbstractBuilder) (string, bool) {
+func (im *Image) rebaseNeeded(lastBuild *Build, builder AbstractBuilder) bool {
 	if !builder.Ready() {
-		return "", false
+		return false
+	}
+
+	if lastBuild == nil {
+		return false
+	}
+
+	if lastBuild.Status.RunImage == "" {
+		return false
 	}
 
 	if lastBuild.Status.RunImage != builder.RunImage() {
-		return BuildReasonBuildpack, true
+		return true
 	}
 
-	return "", false
+	return false
 }
 
 func lastBuildBuiltWithBuilderBuildpacks(builder AbstractBuilder, build *Build) bool {
@@ -118,6 +128,35 @@ func (im *Image) build(sourceResolver *SourceResolver, builder AbstractBuilder, 
 			ServiceAccount: im.Spec.ServiceAccount,
 			Source:         sourceResolver.SourceConfig(),
 			CacheName:      im.Status.BuildCacheName,
+		},
+	}
+}
+
+func (im *Image) rebase(latestRunImage, previousRunImage string, nextBuildNumber int64) *Build {
+	buildNumber := strconv.Itoa(int(nextBuildNumber))
+	return &Build{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:    im.Namespace,
+			GenerateName: im.generateBuildName(buildNumber),
+			OwnerReferences: []metav1.OwnerReference{
+				*kmeta.NewControllerRef(im),
+			},
+			Labels: im.labels(map[string]string{
+				BuildNumberLabel: buildNumber,
+				ImageLabel:       im.Name,
+			}),
+			Annotations: map[string]string{
+				BuildReasonAnnotation: BuildReasonStack,
+			},
+		},
+		Spec: BuildSpec{
+			Tags:           im.generateTags(buildNumber),
+			ServiceAccount: im.Spec.ServiceAccount,
+			Rebase: &RebaseConfig{
+				ImageRef:         im.Status.LatestImage,
+				PreviousRunImage: previousRunImage,
+				LatestRunImage:   latestRunImage,
+			},
 		},
 	}
 }

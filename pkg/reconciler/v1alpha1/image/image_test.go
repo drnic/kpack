@@ -127,6 +127,7 @@ func testImageReconciler(t *testing.T, when spec.G, it spec.S) {
 					Version: "version",
 				},
 			},
+			RunImage: "some/run@sha256acf123123",
 			Status: duckv1alpha1.Status{
 				Conditions: duckv1alpha1.Conditions{
 					{
@@ -153,6 +154,7 @@ func testImageReconciler(t *testing.T, when spec.G, it spec.S) {
 					Version: "version",
 				},
 			},
+			RunImage: "some/run@sha256acf123123",
 			Status: duckv1alpha1.Status{
 				Conditions: duckv1alpha1.Conditions{
 					{
@@ -821,6 +823,7 @@ func testImageReconciler(t *testing.T, when spec.G, it spec.S) {
 							},
 							Status: v1alpha1.BuildStatus{
 								LatestImage: image.Spec.Tag + "@sha256:just-built",
+								RunImage:    "some/run@sha256acf123123",
 								Status: duckv1alpha1.Status{
 									Conditions: duckv1alpha1.Conditions{
 										{
@@ -930,6 +933,7 @@ func testImageReconciler(t *testing.T, when spec.G, it spec.S) {
 							},
 							Status: v1alpha1.BuildStatus{
 								LatestImage: image.Spec.Tag + "@sha256:just-built",
+								RunImage:    "some/run@sha256acf123123",
 								Status: duckv1alpha1.Status{
 									Conditions: duckv1alpha1.Conditions{
 										{
@@ -1021,6 +1025,7 @@ func testImageReconciler(t *testing.T, when spec.G, it spec.S) {
 									},
 								},
 								LatestImage: updatedBuilderImage,
+								RunImage:    "some/run@sha256acf123123",
 								BuilderMetadata: v1alpha1.BuildpackMetadataList{
 									{
 										ID:      "io.buildpack",
@@ -1065,6 +1070,7 @@ func testImageReconciler(t *testing.T, when spec.G, it spec.S) {
 										},
 									},
 								},
+								RunImage: "some/run@sha256acf123123",
 								BuildMetadata: v1alpha1.BuildpackMetadataList{
 									{
 										ID:      "io.buildpack",
@@ -1216,6 +1222,7 @@ func testImageReconciler(t *testing.T, when spec.G, it spec.S) {
 							},
 							Status: v1alpha1.BuildStatus{
 								LatestImage: image.Status.LatestImage,
+								RunImage:    "some/run@sha256acf123123",
 								Status: duckv1alpha1.Status{
 									Conditions: duckv1alpha1.Conditions{
 										{

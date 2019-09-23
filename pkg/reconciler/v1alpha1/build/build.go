@@ -37,7 +37,7 @@ type PodGenerator interface {
 	Generate(*v1alpha1.Build) (*corev1.Pod, error)
 }
 
-func NewController(opt reconciler.Options, k8sClient k8sclient.Interface, informer v1alpha1informer.BuildInformer, podInformer corev1Informers.PodInformer, metadataRetriever MetadataRetriever, podGenerator PodGenerator) *controller.Impl {
+func NewController(opt reconciler.Options, k8sClient k8sclient.Interface, informer v1alpha1informer.BuildInformer, podInformer corev1Informers.PodInformer, metadataRetriever MetadataRetriever, podGenerator PodGenerator, imageFactory registry.ImageFactory) *controller.Impl {
 	c := &Reconciler{
 		Client:            opt.Client,
 		K8sClient:         k8sClient,
@@ -45,6 +45,7 @@ func NewController(opt reconciler.Options, k8sClient k8sclient.Interface, inform
 		Lister:            informer.Lister(),
 		PodLister:         podInformer.Lister(),
 		PodGenerator:      podGenerator,
+		ImageFactory:      imageFactory,
 	}
 
 	impl := controller.NewImpl(c, opt.Logger, ReconcilerName)
@@ -66,6 +67,7 @@ type Reconciler struct {
 	K8sClient         k8sclient.Interface
 	PodLister         v1Listers.PodLister
 	PodGenerator      PodGenerator
+	ImageFactory      registry.ImageFactory
 }
 
 func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
@@ -86,26 +88,52 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return nil
 	}
 
-	pod, err := c.reconcileBuildPod(build)
-	if err != nil {
-		return err
-	}
+	if build.Spec.Rebase != nil {
+		rebasedImage, err := c.ImageFactory.Rebase(
+			build,
+			registry.NewNoAuthImageRef(build.Spec.Rebase.PreviousRunImage),
+			registry.NewNoAuthImageRef(build.Spec.Rebase.LatestRunImage),
+		)
+		if err != nil {
+			return err
+		}
 
-	if build.MetadataReady(pod) {
+		identifier, err := rebasedImage.Identifier()
+		if err != nil {
+			return err
+		}
+
 		image, err := c.MetadataRetriever.GetBuiltImage(build)
 		if err != nil {
 			return err
 		}
 
 		build.Status.BuildMetadata = buildMetadataFromBuiltImage(image)
-		build.Status.LatestImage = image.Identifier
-		build.Status.RunImage = image.RunImage
-	}
+		build.Status.LatestImage = identifier
+		build.Status.RunImage = build.Spec.Rebase.LatestRunImage
+	} else {
+		pod, err := c.reconcileBuildPod(build)
+		if err != nil {
+			return err
+		}
 
-	build.Status.PodName = pod.Name
-	build.Status.StepStates = stepStates(pod)
-	build.Status.StepsCompleted = stepCompleted(pod)
-	build.Status.Conditions = conditionForPod(pod)
+		if build.MetadataReady(pod) {
+			image, err := c.MetadataRetriever.GetBuiltImage(build)
+			if err != nil {
+				return err
+			}
+
+			build.Status.BuildMetadata = buildMetadataFromBuiltImage(image)
+			build.Status.LatestImage = image.Identifier
+			build.Status.RunImage = image.RunImage
+		}
+
+		build.Status.PodName = pod.Name
+		build.Status.StepStates = stepStates(pod)
+		build.Status.StepsCompleted = stepCompleted(pod)
+		build.Status.Conditions = conditionForPod(pod)
+
+	}
 
 	build.Status.ObservedGeneration = build.Generation
 

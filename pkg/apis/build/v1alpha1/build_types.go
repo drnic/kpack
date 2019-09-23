@@ -54,6 +54,13 @@ type BuildSpec struct {
 	CacheName      string                      `json:"cacheName"`
 	Env            []corev1.EnvVar             `json:"env"`
 	Resources      corev1.ResourceRequirements `json:"resources"`
+	Rebase         *RebaseConfig               `json:"rebase,omitempty"`
+}
+
+type RebaseConfig struct {
+	ImageRef         string `json:"imageRef"`
+	PreviousRunImage string `json:"previousRunImage"`
+	LatestRunImage   string `json:"latestRunImage"`
 }
 
 type BuildStatus struct {
