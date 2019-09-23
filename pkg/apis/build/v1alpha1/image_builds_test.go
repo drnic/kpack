@@ -566,7 +566,6 @@ func testImageBuilds(t *testing.T, when spec.G, it spec.S) {
 		it("creates a rebase build", func() {
 			build := image.rebase(build.Status.RunImage, builder.Status.RunImage, 1)
 
-			require.Equal(t, build.Spec.Rebase.ImageRef, image.Status.LatestImage)
 			require.Equal(t, build.Spec.Rebase.PreviousRunImage, build.Status.RunImage)
 			require.Equal(t, build.Spec.Rebase.LatestRunImage, builder.Status.RunImage)
 			assert.Equal(t, "STACK", build.Annotations[BuildReasonAnnotation])

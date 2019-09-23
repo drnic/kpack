@@ -153,7 +153,6 @@ func (im *Image) rebase(latestRunImage, previousRunImage string, nextBuildNumber
 			Tags:           im.generateTags(buildNumber),
 			ServiceAccount: im.Spec.ServiceAccount,
 			Rebase: &RebaseConfig{
-				ImageRef:         im.Status.LatestImage,
 				PreviousRunImage: previousRunImage,
 				LatestRunImage:   latestRunImage,
 			},

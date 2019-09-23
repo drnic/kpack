@@ -58,7 +58,6 @@ type BuildSpec struct {
 }
 
 type RebaseConfig struct {
-	ImageRef         string `json:"imageRef"`
 	PreviousRunImage string `json:"previousRunImage"`
 	LatestRunImage   string `json:"latestRunImage"`
 }
