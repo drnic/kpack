@@ -35,6 +35,10 @@ func (in *ClusterBuilder) BuildpackMetadata() BuildpackMetadataList {
 	return in.Status.BuilderMetadata
 }
 
+func (in *ClusterBuilder) RunImage() string {
+	return in.Status.RunImage
+}
+
 func (in *ClusterBuilder) Ready() bool {
 	return in.Status.GetCondition(duckv1alpha1.ConditionReady).IsTrue() &&
 		(in.Generation == in.Status.ObservedGeneration)

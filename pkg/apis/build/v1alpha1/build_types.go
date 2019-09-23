@@ -59,6 +59,7 @@ type BuildSpec struct {
 type BuildStatus struct {
 	duckv1alpha1.Status `json:",inline"`
 	BuildMetadata       BuildpackMetadataList   `json:"buildMetadata"`
+	RunImage            string                  `json:"runImage"`
 	LatestImage         string                  `json:"latestImage"`
 	PodName             string                  `json:"podName"`
 	StepStates          []corev1.ContainerState `json:"stepStates,omitempty"`

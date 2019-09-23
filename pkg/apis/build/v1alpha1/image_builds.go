@@ -21,6 +21,7 @@ const (
 	BuildReasonConfig     = "CONFIG"
 	BuildReasonCommit     = "COMMIT"
 	BuildReasonBuildpack  = "BUILDPACK"
+	BuildReasonStack      = "STACK"
 )
 
 type AbstractBuilder interface {
@@ -29,6 +30,7 @@ type AbstractBuilder interface {
 	Ready() bool
 	BuildpackMetadata() BuildpackMetadataList
 	GetName() string
+	RunImage() string
 }
 
 func (im *Image) buildNeeded(lastBuild *Build, sourceResolver *SourceResolver, builder AbstractBuilder) ([]string, bool) {
@@ -64,7 +66,21 @@ func (im *Image) buildNeeded(lastBuild *Build, sourceResolver *SourceResolver, b
 		reasons = append(reasons, BuildReasonBuildpack)
 	}
 
+	//do we check for rebase even for rebuilds to add that as a reason?
+
 	return reasons, len(reasons) > 0
+}
+
+func (im *Image) rebaseNeeded(lastBuild *Build, builder AbstractBuilder) (string, bool) {
+	if !builder.Ready() {
+		return "", false
+	}
+
+	if lastBuild.Status.RunImage != builder.RunImage() {
+		return BuildReasonBuildpack, true
+	}
+
+	return "", false
 }
 
 func lastBuildBuiltWithBuilderBuildpacks(builder AbstractBuilder, build *Build) bool {

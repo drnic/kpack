@@ -43,6 +43,10 @@ func (b *Builder) BuildpackMetadata() BuildpackMetadataList {
 	return b.Status.BuilderMetadata
 }
 
+func (b *Builder) RunImage() string {
+	return b.Status.RunImage
+}
+
 func (b *Builder) GetName() string {
 	return b.ObjectMeta.Name
 }
