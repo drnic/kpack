@@ -66,31 +66,11 @@ func (im *Image) buildNeeded(lastBuild *Build, sourceResolver *SourceResolver, b
 		reasons = append(reasons, BuildReasonBuildpack)
 	}
 
-	if lastBuild.Status.RunImage != builder.RunImage() && len(reasons) > 0 {
+	if lastBuild.Status.RunImage != builder.RunImage() {
 		reasons = append(reasons, BuildReasonStack)
 	}
 
 	return reasons, len(reasons) > 0
-}
-
-func (im *Image) rebaseNeeded(lastBuild *Build, builder AbstractBuilder) bool {
-	if !builder.Ready() {
-		return false
-	}
-
-	if lastBuild == nil {
-		return false
-	}
-
-	if lastBuild.Status.RunImage == "" {
-		return false
-	}
-
-	if lastBuild.Status.RunImage != builder.RunImage() {
-		return true
-	}
-
-	return false
 }
 
 func lastBuildBuiltWithBuilderBuildpacks(builder AbstractBuilder, build *Build) bool {
@@ -128,74 +108,9 @@ func (im *Image) build(sourceResolver *SourceResolver, builder AbstractBuilder, 
 			ServiceAccount: im.Spec.ServiceAccount,
 			Source:         sourceResolver.SourceConfig(),
 			CacheName:      im.Status.BuildCacheName,
+			PreviousImage:  im.Status.LatestImage,
 		},
 	}
-}
-
-func (im *Image) rebase(builder AbstractBuilder, previousRunImage string, nextBuildNumber int64) *Build {
-	buildNumber := strconv.Itoa(int(nextBuildNumber))
-	return &Build{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:    im.Namespace,
-			GenerateName: im.generateBuildName(buildNumber),
-			OwnerReferences: []metav1.OwnerReference{
-				*kmeta.NewControllerRef(im),
-			},
-			Labels: im.labels(map[string]string{
-				BuildNumberLabel: buildNumber,
-				ImageLabel:       im.Name,
-			}),
-			Annotations: map[string]string{
-				BuildReasonAnnotation: BuildReasonStack,
-			},
-		},
-		Spec: BuildSpec{
-			Tags:           im.generateTags(buildNumber),
-			ServiceAccount: im.Spec.ServiceAccount,
-			Rebase: &RebaseConfig{
-				PreviousRunImage: runImageConfig(builder, previousRunImage),
-				LatestRunImage:   runImageConfig(builder, builder.RunImage()),
-			},
-		},
-	}
-}
-
-func runImageConfig(builder AbstractBuilder, ref string) RunImageConfig {
-	secret := ""
-	if len(builder.ImageRef().ImagePullSecrets) > 0 {
-		secret = builder.ImageRef().ImagePullSecrets[0].Name
-	}
-	return RunImageConfig{
-		Ref:              ref,
-		BuilderNamespace: builder.GetObjectMeta().GetNamespace(),
-		PullSecretName:   secret,
-	}
-}
-
-type RunImageConfig struct {
-	Ref              string `json:"ref"`
-	BuilderNamespace string `json:"namespace"`
-	PullSecretName   string `json:"secretName"`
-}
-
-func (r RunImageConfig) ServiceAccount() string {
-	return ""
-}
-
-func (r RunImageConfig) Namespace() string {
-	return r.BuilderNamespace
-}
-
-func (r RunImageConfig) Image() string {
-	return r.Ref
-}
-
-func (r RunImageConfig) HasSecret() bool {
-	return r.PullSecretName != ""
-}
-
-func (r RunImageConfig) SecretName() string {
-	return r.PullSecretName
 }
 
 func (im *Image) latestForImage(build *Build) string {

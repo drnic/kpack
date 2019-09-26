@@ -86,10 +86,16 @@ func main() {
 	pvcInformer := k8sInformerFactory.Core().V1().PersistentVolumeClaims()
 	podInformer := k8sInformerFactory.Core().V1().Pods()
 
+	imageFactory := &registry.ImageFactory{
+		KeychainFactory: secret.NewSecretKeychainFactory(k8sClient),
+	}
+
 	metadataRetriever := &cnb.RemoteMetadataRetriever{
-		RemoteImageFactory: &registry.ImageFactory{
-			KeychainFactory: secret.NewSecretKeychainFactory(k8sClient),
-		},
+		RemoteImageFactory: imageFactory,
+	}
+
+	rebaser := cnb.ImageRebaser{
+		RemoteImageFactory: imageFactory,
 	}
 
 	buildpodGenerator := &buildpod.Generator{
@@ -106,7 +112,7 @@ func main() {
 	blobResolver := &blob.Resolver{}
 	registryResolver := &registry.Resolver{}
 
-	buildController := build.NewController(options, k8sClient, buildInformer, podInformer, metadataRetriever, buildpodGenerator)
+	buildController := build.NewController(options, k8sClient, buildInformer, podInformer, metadataRetriever, buildpodGenerator, rebaser)
 	imageController := image.NewController(options, k8sClient, imageInformer, buildInformer, builderInformer, clusterBuilderInformer, sourceResolverInformer, pvcInformer)
 	builderController := builder.NewController(options, builderInformer, metadataRetriever)
 	clusterBuilderController := clusterbuilder.NewController(options, clusterBuilderInformer, metadataRetriever)

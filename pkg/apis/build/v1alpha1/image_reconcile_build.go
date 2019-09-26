@@ -25,16 +25,6 @@ func (im *Image) ReconcileBuild(latestBuild *Build, resolver *SourceResolver, bu
 		}, nil
 	}
 
-	if im.rebaseNeeded(latestBuild, builder) {
-		nextBuildNumber := currentBuildNumber + 1
-		return newBuild{
-			previousBuild: latestBuild,
-			build:         im.rebase(builder, latestBuild.Status.RunImage, nextBuildNumber),
-			buildCounter:  nextBuildNumber,
-			latestImage:   latestImage,
-		}, nil
-	}
-
 	return upToDateBuild{
 		build:        latestBuild,
 		buildCounter: currentBuildNumber,

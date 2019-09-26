@@ -564,26 +564,5 @@ func testImageBuilds(t *testing.T, when spec.G, it spec.S) {
 
 			assert.Equal(t, image.Spec.Build.Resources, build.Spec.Resources)
 		})
-
-		it("creates a rebase build", func() {
-			builder.Status.RunImage = "some.registry.io/run-image@sha256:newrunimage"
-			build := image.rebase(builder, "some.registry.io/run-image@sha256:abcdefg1234", 1)
-
-			prevRunImageConfig := RunImageConfig{
-				Ref:              "some.registry.io/run-image@sha256:abcdefg1234",
-				BuilderNamespace: "",
-				PullSecretName:   "",
-			}
-			require.Equal(t, prevRunImageConfig, build.Spec.Rebase.PreviousRunImage)
-
-			latestRunImageConfig := RunImageConfig{
-				Ref:              "some.registry.io/run-image@sha256:newrunimage",
-				BuilderNamespace: "",
-				PullSecretName:   "",
-			}
-			require.Equal(t, latestRunImageConfig, build.Spec.Rebase.LatestRunImage)
-
-			assert.Equal(t, "STACK", build.Annotations[BuildReasonAnnotation])
-		})
 	})
 }

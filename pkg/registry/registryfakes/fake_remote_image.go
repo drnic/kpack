@@ -3,6 +3,8 @@ package registryfakes
 import (
 	"fmt"
 	"time"
+
+	"github.com/pivotal/kpack/pkg/registry"
 )
 
 func NewFakeRemoteImage(image string, digest string) *FakeRemoteImage {
@@ -21,6 +23,10 @@ type FakeRemoteImage struct {
 	labels    map[string]string
 	env       map[string]string
 	createdAt time.Time
+}
+
+func (f *FakeRemoteImage) Rebase(topLayer string, new registry.RemoteImage) (registry.RemoteImage, error) {
+	panic("not supported")
 }
 
 func (f *FakeRemoteImage) CreatedAt() (time.Time, error) {

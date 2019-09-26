@@ -1420,6 +1420,7 @@ func builds(image *v1alpha1.Image, sourceResolver *v1alpha1.SourceResolver, coun
 			},
 			Status: v1alpha1.BuildStatus{
 				LatestImage: fmt.Sprintf("%s@sha256:build-%d", image.Spec.Tag, i),
+				RunImage:    "some/run@sha256acf123123", //maybe?
 				Status: duckv1alpha1.Status{
 					Conditions: duckv1alpha1.Conditions{
 						condition,

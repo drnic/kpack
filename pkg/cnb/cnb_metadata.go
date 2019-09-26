@@ -89,10 +89,21 @@ func (r *RemoteMetadataRetriever) GetBuiltImage(ref registry.ImageRef) (BuiltIma
 		return BuiltImage{}, err
 	}
 
+	return readBuiltImage(img)
+}
+
+type BuiltImage struct {
+	Identifier        string
+	CompletedAt       time.Time
+	BuildpackMetadata []lcyclemd.BuildpackMetadata
+	RunImage          string
+}
+
+func readBuiltImage(img registry.RemoteImage) (BuiltImage, error) {
 	var buildMetadataJSON string
 	var layerMetadataJSON string
 
-	buildMetadataJSON, err = img.Label(lcyclemd.BuildMetadataLabel)
+	buildMetadataJSON, err := img.Label(lcyclemd.BuildMetadataLabel)
 	if err != nil {
 		return BuiltImage{}, err
 	}
@@ -132,11 +143,4 @@ func (r *RemoteMetadataRetriever) GetBuiltImage(ref registry.ImageRef) (BuiltIma
 		BuildpackMetadata: buildMetadata.Buildpacks,
 		RunImage:          runImage,
 	}, nil
-}
-
-type BuiltImage struct {
-	Identifier        string
-	CompletedAt       time.Time
-	BuildpackMetadata []lcyclemd.BuildpackMetadata
-	RunImage          string
 }

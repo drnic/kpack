@@ -37,7 +37,7 @@ type PodGenerator interface {
 	Generate(*v1alpha1.Build) (*corev1.Pod, error)
 }
 
-func NewController(opt reconciler.Options, k8sClient k8sclient.Interface, informer v1alpha1informer.BuildInformer, podInformer corev1Informers.PodInformer, metadataRetriever MetadataRetriever, podGenerator PodGenerator, imageRebaser registry.ImageRebaser) *controller.Impl {
+func NewController(opt reconciler.Options, k8sClient k8sclient.Interface, informer v1alpha1informer.BuildInformer, podInformer corev1Informers.PodInformer, metadataRetriever MetadataRetriever, podGenerator PodGenerator, imageRebaser cnb.ImageRebaser) *controller.Impl {
 	c := &Reconciler{
 		Client:            opt.Client,
 		K8sClient:         k8sClient,
@@ -67,7 +67,7 @@ type Reconciler struct {
 	K8sClient         k8sclient.Interface
 	PodLister         v1Listers.PodLister
 	PodGenerator      PodGenerator
-	ImageRebaser      registry.ImageRebaser
+	ImageRebaser      cnb.ImageRebaser
 }
 
 func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
@@ -88,26 +88,20 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return nil
 	}
 
-	if build.Spec.Rebase != nil {
-		rebasedImage, err := c.ImageRebaser.Rebase(build, build.Spec.Rebase.PreviousRunImage, build.Spec.Rebase.LatestRunImage)
-		if err != nil {
-			return err
-		}
-
-		identifier, err := rebasedImage.Identifier()
-		if err != nil {
-			return err
-		}
-
-		image, err := c.MetadataRetriever.GetBuiltImage(build)
+	if build.Rebasable() {
+		//todo how to handle errors
+		image, err := c.ImageRebaser.Rebase(
+			builderImageRef{namespace: build.Namespace(), builder: build.Spec.Builder},
+			previousImageRef{namespace: build.Namespace(), serviceAccount: build.Spec.ServiceAccount, image: build.Spec.PreviousImage})
 		if err != nil {
 			return err
 		}
 
 		build.Status.BuildMetadata = buildMetadataFromBuiltImage(image)
-		build.Status.LatestImage = identifier
+		build.Status.LatestImage = image.Identifier
 		build.Status.RunImage = image.RunImage
 	} else {
+
 		pod, err := c.reconcileBuildPod(build)
 		if err != nil {
 			return err
@@ -128,12 +122,65 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		build.Status.StepStates = stepStates(pod)
 		build.Status.StepsCompleted = stepCompleted(pod)
 		build.Status.Conditions = conditionForPod(pod)
-
 	}
 
 	build.Status.ObservedGeneration = build.Generation
 
 	return c.updateStatus(build)
+}
+
+type builderImageRef struct {
+	namespace string
+	builder   v1alpha1.BuilderImage
+}
+
+func (b builderImageRef) ServiceAccount() string {
+	return ""
+}
+
+func (b builderImageRef) Namespace() string {
+	return b.namespace
+}
+
+func (b builderImageRef) Image() string {
+	return b.builder.Image
+}
+
+func (b builderImageRef) HasSecret() bool {
+	return len(b.builder.ImagePullSecrets) > 0
+}
+
+func (b builderImageRef) SecretName() string {
+	if b.HasSecret() {
+		return b.builder.ImagePullSecrets[0].Name
+	}
+	return ""
+}
+
+type previousImageRef struct {
+	namespace      string
+	serviceAccount string
+	image          string
+}
+
+func (b previousImageRef) ServiceAccount() string {
+	return b.serviceAccount
+}
+
+func (b previousImageRef) Namespace() string {
+	return b.namespace
+}
+
+func (b previousImageRef) Image() string {
+	return b.image
+}
+
+func (b previousImageRef) HasSecret() bool {
+	return b.serviceAccount != ""
+}
+
+func (b previousImageRef) SecretName() string {
+	return ""
 }
 
 func (c *Reconciler) reconcileBuildPod(build *v1alpha1.Build) (*corev1.Pod, error) {
